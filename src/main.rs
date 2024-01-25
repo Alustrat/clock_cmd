@@ -77,18 +77,18 @@ const NUMBER_MATRIX: [[[bool; 3]; 5]; 11] = [
 ];
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(about="Simple command to print a clock inside your terminal.", long_about = None, after_help="If no UTC nor timezone is passed, local time is used by default.")]
 struct Args {
-    #[arg(short='s', long)]
+    #[arg(short='s', long, help="Define the size of the clock. Used as a multiplier.")]
     size: Option<u32>,
 
-    #[arg(short='f', long=None, action=clap::ArgAction::SetTrue)]
+    #[arg(short='f', long=None, action=clap::ArgAction::SetTrue, help="Keep the clock always refreshing.")]
     keep_open: Option<bool>,
 
-    #[arg(long="timezone", short='t')]
+    #[arg(long="timezone", short='t',  help="Print the current time for the given timezone. If --utc is passed, this will be ignored.")]
     timezone: Option<String>,
 
-    #[arg(short=None, long, action=clap::ArgAction::SetTrue)]
+    #[arg(short='u', long, action=clap::ArgAction::SetTrue, help="Print the current UTC time.")]
     utc: Option<bool>,
 }
 
