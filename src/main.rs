@@ -181,7 +181,7 @@ fn print_clock(mut stdout: &std::io::Stdout, size_factor: u32, offset: &OffsetTy
     match offset {
         OffsetTypes::Timezone(v) => {
             lines.push("".to_string());
-            lines.push(format!("Timezone={}", v.name().to_string()))
+            lines.push(format!("Timezone={}", v.name()))
         },
         _ => ()
     };
@@ -200,7 +200,7 @@ fn get_time(offset: &OffsetTypes) -> Vec<u32> {
             time.format("%H:%M:%S").to_string()
         },
         OffsetTypes::Timezone(v) => {
-            let time: chrono::prelude::DateTime<Tz> = Utc::now().with_timezone(&v);
+            let time: chrono::prelude::DateTime<Tz> = Utc::now().with_timezone(v);
             time.format("%H:%M:%S").to_string()
         },
         OffsetTypes::Local => {
