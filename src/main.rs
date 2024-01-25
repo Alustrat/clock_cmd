@@ -112,7 +112,7 @@ enum OffsetTypes {
 
 
 fn main() {
-    let mut stdout = stdout();
+    let stdout = stdout();
     let args = Args::parse();
 
     let size_factor = args.size.unwrap_or(1);
@@ -129,9 +129,9 @@ fn main() {
 
 
     if keep_open {
-        keep_refreshing(&mut stdout, size_factor, &offset);
+        keep_refreshing(&stdout, size_factor, &offset);
     } else {
-        print_clock(&mut stdout, size_factor, &offset);
+        print_clock(&stdout, size_factor, &offset);
     }
 }
 
@@ -178,13 +178,10 @@ fn print_clock(mut stdout: &std::io::Stdout, size_factor: u32, offset: &OffsetTy
         }
     }
 
-    match offset {
-        OffsetTypes::Timezone(v) => {
-            lines.push("".to_string());
-            lines.push(format!("Timezone={}", v.name()))
-        },
-        _ => ()
-    };
+    if let OffsetTypes::Timezone(v) = offset {
+        lines.push("".to_string());
+        lines.push(format!("Timezone={}", v.name()));
+    }
 
     for line in &lines {
         writeln!(stdout, "{}", line).unwrap();
