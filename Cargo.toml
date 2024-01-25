@@ -1,8 +1,8 @@
 [package]
-name = "clock"
+name = "r-clock"
 version = "0.1.0"
 edition = "2021"
-authors = ["Arnaud Lustrat"]
+authors = ["Alustrat <pro.alustrat@pm.me>"]
 
 [dependencies]
 chrono = "0.4.31"
