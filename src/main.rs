@@ -1,8 +1,9 @@
 use std::{thread, time};
 use std::io::{Write, stdout};
 use crossterm::{cursor, terminal, ExecutableCommand};
-use chrono::Utc;
+use chrono::{Utc, Local};
 use clap::Parser;
+use chrono_tz::{Tz, TZ_VARIANTS};
 
 
 const NUMBER_MATRIX: [[[bool; 3]; 5]; 11] = [
@@ -83,7 +84,32 @@ struct Args {
 
     #[arg(short='f', long=None, action=clap::ArgAction::SetTrue)]
     keep_open: Option<bool>,
+
+    #[arg(long="timezone", short='t')]
+    timezone: Option<String>,
+
+    #[arg(short=None, long, action=clap::ArgAction::SetTrue)]
+    utc: Option<bool>,
 }
+
+fn parse_timezone(tz: String) -> Tz {
+    let lowered_tz = tz.to_lowercase();
+
+    match TZ_VARIANTS.iter().find(|timezone| timezone.name().to_lowercase().contains(&lowered_tz)) {
+        Some(v) => *v,
+        None => {
+            eprintln!("Unknown timezone");
+            std::process::exit(1);
+        }
+    }
+}
+
+enum OffsetTypes {
+    Utc,
+    Local,
+    Timezone(Tz),
+}
+
 
 fn main() {
     let mut stdout = stdout();
@@ -92,14 +118,24 @@ fn main() {
     let size_factor = args.size.unwrap_or(1);
     let keep_open = args.keep_open.unwrap_or(false);
 
-    if keep_open {
-        keep_refreshing(&mut stdout, size_factor)
+    let offset: OffsetTypes;
+    if args.utc.unwrap_or(false) {
+        offset = OffsetTypes::Utc;
+    } else if args.timezone.is_some() {
+        offset = OffsetTypes::Timezone(parse_timezone(args.timezone.unwrap()));
     } else {
-        print_clock(&mut stdout, size_factor)
+        offset = OffsetTypes::Local;
+    }
+
+
+    if keep_open {
+        keep_refreshing(&mut stdout, size_factor, &offset);
+    } else {
+        print_clock(&mut stdout, size_factor, &offset);
     }
 }
 
-fn keep_refreshing(mut stdout: &std::io::Stdout, size_factor: u32) {
+fn keep_refreshing(mut stdout: &std::io::Stdout, size_factor: u32, offset: &OffsetTypes) {
     stdout.execute(cursor::Hide).unwrap();
 
     // When the user leave, make the cursor back
@@ -110,16 +146,17 @@ fn keep_refreshing(mut stdout: &std::io::Stdout, size_factor: u32) {
     }).expect("Error setting Ctrl-C handler");
 
     loop {
-        print_clock(stdout, size_factor);
+        let lines = print_clock(stdout, size_factor, offset);
         thread::sleep(time::Duration::from_millis(1000));
 
-        stdout.execute(cursor::MoveUp(5* size_factor as u16)).unwrap();
+        stdout.execute(cursor::MoveUp(lines)).unwrap();
         stdout.execute(terminal::Clear(terminal::ClearType::FromCursorDown)).unwrap();
     }
 }
 
-fn print_clock(mut stdout: &std::io::Stdout, size_factor: u32) {    
-    let time = get_time();
+fn print_clock(mut stdout: &std::io::Stdout, size_factor: u32, offset: &OffsetTypes) -> u16 {    
+    let mut lines: Vec<String> = vec![];
+    let time = get_time(offset);
     let time_matrix: Vec<_> = time.iter().map(|v| NUMBER_MATRIX[*v as usize]).collect();
 
     for i in 0..5 {
@@ -137,19 +174,48 @@ fn print_clock(mut stdout: &std::io::Stdout, size_factor: u32) {
                 raw_str += &" ".repeat(size_factor as usize);
             }
 
-            writeln!(stdout, "{}", raw_str).unwrap();
+            lines.push(raw_str);
         }
     }
+
+    match offset {
+        OffsetTypes::Timezone(v) => {
+            lines.push("".to_string());
+            lines.push(format!("Timezone={}", v.name().to_string()))
+        },
+        _ => ()
+    };
+
+    for line in &lines {
+        writeln!(stdout, "{}", line).unwrap();
+    }
+
+    lines.len() as u16
 }
 
-fn get_time() -> Vec<u32> {
-    let now_str = Utc::now().format("%H:%M:%S").to_string();
+fn get_time(offset: &OffsetTypes) -> Vec<u32> {
+    let time_str = match offset {
+        OffsetTypes::Utc => {
+            let time = Utc::now();
+            time.format("%H:%M:%S").to_string()
+        },
+        OffsetTypes::Timezone(v) => {
+            let time: chrono::prelude::DateTime<Tz> = Utc::now().with_timezone(&v);
+            time.format("%H:%M:%S").to_string()
+        },
+        OffsetTypes::Local => {
+            let time = Local::now();
+            time.format("%H:%M:%S").to_string()
+        },
+    };
 
     // Return the time as a list of digit
-     now_str.chars().map(|char| {
+     time_str.chars().map(|char| {
         if char.is_ascii_digit() {
             return char.to_digit(10).unwrap();
-        } else if char == ':' {
+        }
+
+        if char == ':' {
             return 10;
         }
 
