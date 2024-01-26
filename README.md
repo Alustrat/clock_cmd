@@ -1,6 +1,7 @@
 <div align="center">
   <h1><code>r-clock</code></h1>
   <strong>Rust command to display a clock in the terminal.</strong>
+  <img style="max-width: 300px" src="https://raw.githubusercontent.com/Alustrat/r-clock/main/static/preview.png">
 </div>
 
 ## Purpose
